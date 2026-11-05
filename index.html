@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Water Treatment Designer — Dashboard pédagogique</title>
+<style>
+  :root {
+    --navy: #0B3D45;
+    --teal: #12606D;
+    --teal-light: #CDEAE6;
+    --sand: #F1EADA;
+    --sand-line: #E1D6BC;
+    --cream: #FAF7F0;
+    --ochre: #C97B2E;
+    --ochre-dark: #8A5A16;
+    --ink: #24393B;
+    --muted: #5A6E70;
+    --green: #1E824C;
+    --red: #C0392B;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: Helvetica, Arial, sans-serif; color: var(--ink); background: var(--cream);
+  }
+  h1, h2, h3 { font-family: Georgia, 'Times New Roman', serif; font-weight: normal; color: var(--navy); }
+
+  /* ---------- Layout ---------- */
+  .app { display: flex; min-height: 100vh; }
+  .sidebar {
+    width: 320px; flex: none; background: var(--navy); color: #CFEDE8;
+    padding: 22px 20px 30px; overflow-y: auto;
+  }
+  .sidebar h1 { color: #FAF7F0; font-size: 19pt; margin: 0 0 4px; }
+  .sidebar .tagline { font-size: 10.5pt; color: #9FC9C3; line-height: 1.5; margin-bottom: 16px; }
+  .sidebar hr { border: none; border-top: 1px solid #2A6B70; margin: 16px 0; }
+
+  .field { margin-bottom: 13px; position: relative; }
+  .field label {
+    display: flex; align-items: center; gap: 5px; font-size: 10.5pt; color: #CFEDE8; margin-bottom: 4px;
+  }
+  .field label .info {
+    width: 14px; height: 14px; border-radius: 50%; background: #2A6B70; color: #CFEDE8;
+    font-size: 8.5pt; display: inline-flex; align-items: center; justify-content: center;
+    cursor: help; font-style: normal; flex: none;
+  }
+  .field input, .field select {
+    width: 100%; padding: 7px 9px; border-radius: 4px; border: 1px solid #2A6B70;
+    background: #0E4C56; color: #FAF7F0; font-size: 11pt; font-family: Helvetica, Arial, sans-serif;
+  }
+  .field input:focus, .field select:focus { outline: 2px solid #7FD8CB; outline-offset: 1px; }
+
+  .btn {
+    display: block; width: 100%; text-align: center; padding: 9px 10px; border-radius: 5px;
+    border: 1px solid #2A6B70; background: #0E4C56; color: #FAF7F0; font-size: 10.5pt;
+    cursor: pointer; margin-bottom: 8px; font-family: Helvetica, Arial, sans-serif;
+  }
+  .btn:hover { background: #12606D; }
+  .btn.primary { background: var(--ochre); border-color: var(--ochre); color: #FAF7F0; }
+  .btn.primary:hover { background: #B56D24; }
+
+  .main { flex: 1; padding: 28px 34px 60px; max-width: 1100px; }
+
+  /* ---------- Value boxes ---------- */
+  .boxes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 26px; }
+  .vbox { border-radius: 8px; padding: 16px 18px; color: #FAF7F0; }
+  .vbox .label { font-size: 9.5pt; opacity: 0.85; margin-bottom: 4px; }
+  .vbox .value { font-size: 14pt; font-family: Georgia, serif; line-height: 1.25; }
+  .vbox.c1 { background: var(--teal); }
+  .vbox.c2 { background: #6E7B3A; }
+  .vbox.c3 { background: #2E7D8C; }
+  .vbox.c4.ok { background: var(--green); }
+  .vbox.c4.bad { background: var(--red); }
+
+  /* ---------- Tabs ---------- */
+  .tabs { display: flex; gap: 4px; border-bottom: 2px solid var(--sand-line); margin-bottom: 20px; }
+  .tab-btn {
+    padding: 10px 16px; font-size: 11pt; background: none; border: none; cursor: pointer;
+    color: var(--muted); border-bottom: 3px solid transparent; font-family: Helvetica, Arial, sans-serif;
+  }
+  .tab-btn.active { color: var(--navy); border-bottom-color: var(--ochre); font-weight: bold; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ---------- Process diagram ---------- */
+  .flow-wrap { background: #EAF3F1; border-radius: 8px; padding: 14px 10px; margin-bottom: 8px; }
+
+  #flowLine {
+    stroke-dasharray: 7 7;
+    animation: flowDash 1s linear infinite;
+  }
+  @keyframes flowDash { to { stroke-dashoffset: -28; } }
+
+  #flowDroplets circle { filter: drop-shadow(0 1px 1px rgba(11,61,69,0.35)); }
+
+  .flow-node-circle { animation: nodePulse 9s ease-in-out infinite; }
+  @keyframes nodePulse {
+    0%   { r: 21; }
+    12%  { r: 17; }
+    100% { r: 17; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    #flowLine { animation: none; }
+    #flowDroplets { display: none; }
+    .flow-node-circle { animation: none; }
+  }
+
+  /* ---------- Accordion ---------- */
+  .accordion-item { border: 1px solid var(--sand-line); border-radius: 6px; margin-bottom: 10px; overflow: hidden; }
+  .accordion-head {
+    display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: var(--sand);
+    cursor: pointer; font-family: Georgia, serif; color: var(--navy); font-size: 13pt;
+  }
+  .accordion-head .chev { margin-left: auto; transition: transform .15s; color: var(--ochre); }
+  .accordion-item.open .chev { transform: rotate(90deg); }
+  .accordion-body { padding: 0 18px; max-height: 0; overflow: hidden; transition: max-height .2s ease, padding .2s ease; background: #FFFDF8; }
+  .accordion-item.open .accordion-body { padding: 14px 18px 18px; max-height: 600px; }
+  .accordion-body p { font-size: 11.3pt; line-height: 1.7; margin: 0 0 10px; }
+  .accordion-body b { color: var(--navy); }
+  .verdict-ok { color: var(--green); font-weight: bold; }
+  .verdict-bad { color: var(--red); font-weight: bold; }
+
+  /* ---------- Table ---------- */
+  table.results { width: 100%; border-collapse: collapse; font-size: 11pt; margin-bottom: 16px; }
+  table.results th { background: var(--navy); color: #FAF7F0; text-align: left; padding: 9px 14px; font-weight: normal; }
+  table.results td { padding: 9px 14px; border-bottom: 1px solid var(--sand-line); }
+  table.results tr:nth-child(even) td { background: var(--sand); }
+
+  .verdict-box {
+    padding: 14px 18px; border-left: 4px solid var(--green); background: var(--sand); font-size: 11.3pt;
+  }
+  .verdict-box.bad { border-left-color: var(--red); }
+
+  /* ---------- Chart ---------- */
+  .chart-caption { font-size: 11pt; color: var(--ink); margin-top: 10px; line-height: 1.6; }
+
+  /* ---------- Glossary ---------- */
+  dl.gloss dt { font-family: Georgia, serif; color: var(--navy); font-size: 12.5pt; margin-top: 12px; }
+  dl.gloss dd { margin-left: 0; font-size: 11pt; color: var(--ink); line-height: 1.55; }
+
+  .muted { color: var(--muted); font-size: 10.3pt; }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ============ SIDEBAR ============ -->
+  <div class="sidebar">
+    <h1>Water Treatment<br>Designer</h1>
+    <div class="tagline">Renseignez les caractéristiques de l'eau brute. Survolez ⓘ pour une explication. Tout se recalcule et se commente automatiquement.</div>
+    <hr>
+
+    <div class="field">
+      <label>Source d'eau</label>
+      <select id="source">
+        <option>Rivière</option><option>Lac</option><option>Nappe phréatique</option><option>Eau de pluie</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Débit (m³/j) <span class="info" title="Volume d'eau à traiter chaque jour. Détermine les quantités de produits nécessaires.">ⓘ</span></label>
+      <input type="number" id="debit" value="1000" min="1">
+    </div>
+    <div class="field">
+      <label>Température (°C) <span class="info" title="Une eau plus froide ralentit les réactions chimiques et la décantation.">ⓘ</span></label>
+      <input type="number" id="temperature" value="25" min="0" max="45">
+    </div>
+    <div class="field">
+      <label>pH <span class="info" title="Acidité de l'eau (0 = très acide, 7 = neutre, 14 = très basique). Influence le choix du coagulant.">ⓘ</span></label>
+      <input type="number" id="ph" value="7" min="0" max="14" step="0.1">
+    </div>
+    <div class="field">
+      <label>Turbidité (NTU) <span class="info" title="Mesure la clarté de l'eau. Plus la valeur est élevée, plus l'eau est trouble.">ⓘ</span></label>
+      <input type="number" id="turbidite" value="100" min="0">
+    </div>
+    <div class="field">
+      <label>MES (mg/L) <span class="info" title="Matières En Suspension : particules solides non dissoutes flottant dans l'eau.">ⓘ</span></label>
+      <input type="number" id="mes" value="100" min="0">
+    </div>
+    <div class="field">
+      <label>Couleur (Pt-Co) <span class="info" title="Intensité de la coloration de l'eau, due par exemple à la matière organique dissoute.">ⓘ</span></label>
+      <input type="number" id="couleur" value="50" min="0">
+    </div>
+    <div class="field">
+      <label>Conductivité (µS/cm) <span class="info" title="Indique la quantité de sels minéraux dissous dans l'eau.">ⓘ</span></label>
+      <input type="number" id="conductivite" value="500" min="0">
+    </div>
+    <div class="field">
+      <label>Fer (mg/L) <span class="info" title="Le fer dissous donne un goût métallique et peut colorer l'eau en rouille.">ⓘ</span></label>
+      <input type="number" id="fer" value="0.5" min="0" step="0.1">
+    </div>
+    <div class="field">
+      <label>Manganèse (mg/L) <span class="info" title="Comme le fer, le manganèse en excès tache le linge et donne un mauvais goût.">ⓘ</span></label>
+      <input type="number" id="manganese" value="0.1" min="0" step="0.1">
+    </div>
+    <div class="field">
+      <label>Nitrates (mg/L) <span class="info" title="Proviennent souvent des engrais agricoles ; dangereux en excès, notamment pour les nourrissons.">ⓘ</span></label>
+      <input type="number" id="nitrates" value="20" min="0">
+    </div>
+    <div class="field">
+      <label>Coliformes (UFC/100 mL) <span class="info" title="Bactéries indicatrices d'une contamination fécale. Doivent être ramenées à 0 avant distribution.">ⓘ</span></label>
+      <input type="number" id="coliformes" value="100" min="0">
+    </div>
+
+    <hr>
+    <button class="btn" id="btnReset">↺ Réinitialiser</button>
+    <button class="btn primary" id="btnExport">⬇ Télécharger les résultats (CSV)</button>
+    <div id="errorMsg" class="muted" style="color:#F5B199;"></div>
+  </div>
+
+  <!-- ============ MAIN ============ -->
+  <div class="main">
+
+    <div class="boxes" id="valueBoxes"></div>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="processus">Processus expliqué</button>
+      <button class="tab-btn" data-tab="resultats">Résultats chiffrés</button>
+      <button class="tab-btn" data-tab="qualite">Qualité de l'eau</button>
+      <button class="tab-btn" data-tab="glossaire">Glossaire</button>
+    </div>
+
+    <!-- ---- TAB: Processus ---- -->
+    <div class="tab-panel active" id="tab-processus">
+      <div class="flow-wrap">
+        <svg viewBox="0 0 1000 150" width="100%">
+          <path id="flowLine" d="M 45 75 L 915 75" stroke="#7FBFC4" stroke-width="3" fill="none"/>
+          <g id="flowDroplets"></g>
+          <g id="flowNodes"></g>
+        </svg>
+      </div>
+      <p class="muted" style="margin: 6px 0 16px;">Cliquez sur chaque étape ci-dessous pour comprendre le raisonnement du dashboard.</p>
+      <div id="accordion"></div>
+    </div>
+
+    <!-- ---- TAB: Résultats ---- -->
+    <div class="tab-panel" id="tab-resultats">
+      <table class="results" id="resultsTable">
+        <thead><tr><th>Étape</th><th>Information</th><th>Dose</th><th>Unité</th><th>Masse totale</th><th>Unité</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <div class="verdict-box" id="verdictBox"></div>
+    </div>
+
+    <!-- ---- TAB: Qualité ---- -->
+    <div class="tab-panel" id="tab-qualite">
+      <svg viewBox="0 0 760 340" width="100%" id="qualiteChart"></svg>
+      <div class="chart-caption" id="qualiteCaption"></div>
+    </div>
+
+    <!-- ---- TAB: Glossaire ---- -->
+    <div class="tab-panel" id="tab-glossaire">
+      <p class="muted">Un mot vous échappe ? Voici les définitions des principaux termes utilisés dans ce dashboard.</p>
+      <dl class="gloss" id="glossaire"></dl>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// =============================================================================
+// CONSTANTES ET HYPOTHÈSES DE CALCUL
+// Formules volontairement simplifiées à des fins pédagogiques : elles
+// illustrent la logique du dimensionnement, sans remplacer une étude
+// d'ingénierie réelle.
+// =============================================================================
+const C = {
+  DOSE_COAG_BASE_MGL: 20,
+  DOSE_COAG_PAR_NTU: 0.5,
+  DOSE_COAG_MAX_MGL: 150,
+  SEUIL_PH_FER: 6.5,
+  COEF_FLOCULANT: 0.1,
+  PUISSANCE_MELANGE_W: 100,
+  VISCOSITE_EAU_PAS: 0.001,
+  SEUIL_TURBIDITE_FLOC: 50,
+  SEUIL_MES_DECANT: 100,
+  SEUIL_TURB_FILTRE_LENT: 10,
+  SEUIL_TURB_FILTRE_RAPIDE: 100,
+  DOSE_DESINF_AVEC_COLI: 2,
+  DOSE_DESINF_RESIDUELLE: 0.2,
+  SEUIL_OMS_TURBIDITE: 5
+};
+
+// Abattement de turbidité assumé à chaque étape : utilisé À LA FOIS pour le
+// calcul de la turbidité finale ET pour le graphique, afin que les deux
+// restent toujours cohérents entre eux.
+const REDUCTION = [
+  ["Eau brute", 1], ["Coagulation", 0.5], ["Floculation", 0.25],
+  ["Décantation", 0.1], ["Filtration", 0.02], ["Désinfection", 0.01]
+];
+
+const DEFAULTS = {
+  source: "Rivière", debit: 1000, temperature: 25, ph: 7, turbidite: 100,
+  mes: 100, couleur: 50, conductivite: 500, fer: 0.5, manganese: 0.1,
+  nitrates: 20, coliformes: 100
+};
+
+const ETAPES = ["Captage","Coagulation","Floculation","Décantation","Filtration","Désinfection","Distribution"];
+
+function getInputs() {
+  return {
+    source: document.getElementById('source').value,
+    debit: parseFloat(document.getElementById('debit').value),
+    temperature: parseFloat(document.getElementById('temperature').value),
+    ph: parseFloat(document.getElementById('ph').value),
+    turbidite: parseFloat(document.getElementById('turbidite').value),
+    mes: parseFloat(document.getElementById('mes').value),
+    couleur: parseFloat(document.getElementById('couleur').value),
+    conductivite: parseFloat(document.getElementById('conductivite').value),
+    fer: parseFloat(document.getElementById('fer').value),
+    manganese: parseFloat(document.getElementById('manganese').value),
+    nitrates: parseFloat(document.getElementById('nitrates').value),
+    coliformes: parseFloat(document.getElementById('coliformes').value)
+  };
+}
+
+function validerEntrees(inp) {
+  const erreurs = [];
+  if (!(inp.debit > 0)) erreurs.push("Le débit doit être supérieur à 0 m³/j.");
+  if (!(inp.turbidite >= 0)) erreurs.push("La turbidité ne peut pas être négative.");
+  if (!(inp.ph >= 0 && inp.ph <= 14)) erreurs.push("Le pH doit être compris entre 0 et 14.");
+  if (!(inp.mes >= 0)) erreurs.push("Les MES ne peuvent pas être négatives.");
+  if (!(inp.coliformes >= 0)) erreurs.push("Le nombre de coliformes ne peut pas être négatif.");
+  return erreurs;
+}
+
+function calcul(inp) {
+  const doseCoagulantBrut = C.DOSE_COAG_BASE_MGL + C.DOSE_COAG_PAR_NTU * inp.turbidite;
+  const doseCoagulant = Math.min(doseCoagulantBrut, C.DOSE_COAG_MAX_MGL);
+  const coagulantNom = inp.ph < C.SEUIL_PH_FER ? "Chlorure ferrique" : "Sulfate d'aluminium";
+  const masseCoagulant = doseCoagulant * inp.debit / 1000;
+
+  const doseFloculant = C.COEF_FLOCULANT * doseCoagulant;
+  const masseFloculant = doseFloculant * inp.debit / 1000;
+  const floculationType = inp.turbidite < C.SEUIL_TURBIDITE_FLOC ? "Péricinétique" : "Orthocinétique";
+  const volumeHoraire = inp.debit / 24;
+  const G = Math.sqrt(C.PUISSANCE_MELANGE_W / (C.VISCOSITE_EAU_PAS * volumeHoraire));
+
+  const decantationType = inp.mes < C.SEUIL_MES_DECANT ? "Décantation simple" : "Décantation floculante";
+
+  let filtrationType;
+  if (inp.turbidite < C.SEUIL_TURB_FILTRE_LENT) filtrationType = "Filtre lent (sur sable)";
+  else if (inp.turbidite < C.SEUIL_TURB_FILTRE_RAPIDE) filtrationType = "Filtre rapide";
+  else filtrationType = "Filtre multicouche";
+
+  let desinfectantNom, doseDesinfection;
+  if (inp.coliformes > 0) {
+    desinfectantNom = "Hypochlorite de sodium (chlore)";
+    doseDesinfection = C.DOSE_DESINF_AVEC_COLI;
+  } else {
+    desinfectantNom = "UV + chlore résiduel";
+    doseDesinfection = C.DOSE_DESINF_RESIDUELLE;
+  }
+  const masseDesinfectant = doseDesinfection * inp.debit / 1000;
+
+  // Réactifs exprimés en kg par litre d'eau traitée (dose convertie de mg/L à kg/L : ÷ 1 000 000)
+  const coagulantKgL = doseCoagulant / 1e6;
+  const floculantKgL = doseFloculant / 1e6;
+  const desinfectantKgL = doseDesinfection / 1e6;
+
+  const turbiditeFinale = inp.turbidite * REDUCTION[REDUCTION.length - 1][1];
+  const phFinal = 7;
+  const coliformesFinaux = 0;
+  const conforme = (turbiditeFinale <= C.SEUIL_OMS_TURBIDITE) && (coliformesFinaux === 0) && (phFinal >= 6.5 && phFinal <= 8.5);
+
+  return {
+    doseCoagulant, masseCoagulant, coagulantNom, coagulantKgL,
+    doseFloculant, masseFloculant, floculationType, G, floculantKgL,
+    decantationType, filtrationType,
+    desinfectantNom, doseDesinfection, masseDesinfectant, desinfectantKgL,
+    turbiditeFinale, phFinal, coliformesFinaux, conforme
+  };
+}
+
+// Formatage dédié aux réactifs en kg/L : valeurs très petites, on garde 8 décimales
+// pour que rien ne s'arrondisse silencieusement à zéro.
+function fmtKgL(x) { return Number(x).toFixed(8); }
+
+function fmt(x, d) { return Number(x).toLocaleString('fr-FR', {minimumFractionDigits: d, maximumFractionDigits: d}); }
+
+// =============================================================================
+// RENDU
+// =============================================================================
+let lastResults = null; // pour l'export CSV
+
+function render() {
+  const inp = getInputs();
+  const erreurs = validerEntrees(inp);
+  const errBox = document.getElementById('errorMsg');
+
+  if (erreurs.length > 0) {
+    errBox.innerHTML = erreurs.map(e => "⚠ " + e).join("<br>");
+    return;
+  }
+  errBox.innerHTML = "";
+
+  const r = calcul(inp);
+  lastResults = { inp, r };
+
+  renderValueBoxes(inp, r);
+  renderAccordion(inp, r);
+  renderTable(inp, r);
+  renderVerdict(r);
+  renderQualite(inp, r);
+  renderGlossaire();
+}
+
+function renderValueBoxes(inp, r) {
+  const el = document.getElementById('valueBoxes');
+  el.innerHTML = `
+    <div class="vbox c1"><div class="label">COAGULANT RETENU</div><div class="value">${r.coagulantNom}</div></div>
+    <div class="vbox c2"><div class="label">FILTRATION RETENUE</div><div class="value">${r.filtrationType}</div></div>
+    <div class="vbox c3"><div class="label">DÉSINFECTION RETENUE</div><div class="value">${r.desinfectantNom}</div></div>
+    <div class="vbox c4 ${r.conforme ? 'ok' : 'bad'}">
+      <div class="label">${r.conforme ? 'CONFORME OMS' : 'NON CONFORME'}</div>
+      <div class="value">Turbidité finale : ${fmt(r.turbiditeFinale, 2)} NTU</div>
+    </div>`;
+}
+
+const FLOW_DUR = 9; // durée (s) d'un aller complet le long du circuit — partagée par les gouttes et la pulsation des stations
+
+function renderFlow() {
+  const g = document.getElementById('flowNodes');
+  const n = ETAPES.length;
+  const margin = 45, span = (1000 - 2 * margin) / (n - 1);
+  let html = "";
+  ETAPES.forEach((nom, i) => {
+    const x = margin + i * span;
+    const delay = (i / (n - 1)) * FLOW_DUR;
+    html += `<circle class="flow-node-circle" cx="${x}" cy="75" r="17" fill="#12606D" stroke="#0B3D45" stroke-width="1.5" style="animation-delay:${delay.toFixed(2)}s; transform-origin:${x}px 75px;"/>`;
+    html += `<text x="${x}" y="80" text-anchor="middle" fill="#FAF7F0" font-family="Helvetica" font-size="12" font-weight="bold">${i+1}</text>`;
+    html += `<text x="${x}" y="108" text-anchor="middle" fill="#0B3D45" font-family="Helvetica" font-size="10.5" font-weight="bold">${nom}</text>`;
+  });
+  g.innerHTML = html;
+}
+
+// Gouttes d'eau qui parcourent le circuit en boucle, de la couleur trouble de
+// l'eau brute à la couleur claire de l'eau distribuée — la métaphore visuelle
+// du dashboard : on VOIT l'eau se purifier au fil des étapes.
+function renderFlowDroplets() {
+  const g = document.getElementById('flowDroplets');
+  const nGouttes = 4;
+  const pathD = "M 45 75 L 915 75";
+  // couleurs interpolées sur les 7 étapes : brute trouble → eau potable claire
+  const couleurs = ["#8A6A3E", "#967A46", "#B08A52", "#8FAE9A", "#6FBFC0", "#3FA7B0", "#CFEDE8"];
+  const keyTimes = "0;0.166;0.333;0.5;0.666;0.833;1";
+
+  let html = "";
+  for (let i = 0; i < nGouttes; i++) {
+    const begin = ((i * FLOW_DUR) / nGouttes).toFixed(2) + "s";
+    html += `
+      <circle r="6" fill="${couleurs[0]}">
+        <animateMotion dur="${FLOW_DUR}s" begin="${begin}" repeatCount="indefinite" path="${pathD}"/>
+        <animate attributeName="fill" values="${couleurs.join(';')}" keyTimes="${keyTimes}"
+                 dur="${FLOW_DUR}s" begin="${begin}" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values="0;1;1;1;1;1;0" keyTimes="0;0.04;0.2;0.5;0.8;0.96;1"
+                 dur="${FLOW_DUR}s" begin="${begin}" repeatCount="indefinite"/>
+        <animate attributeName="r" values="5;7;5;7;5;7;5" keyTimes="${keyTimes}"
+                 dur="${FLOW_DUR}s" begin="${begin}" repeatCount="indefinite"/>
+      </circle>`;
+  }
+  g.innerHTML = html;
+}
+
+function b(txt) { return `<b>${txt}</b>`; }
+
+function renderAccordion(inp, r) {
+  const items = [
+    {
+      icon: "1", titre: "Captage",
+      html: `<p>L'eau brute est prélevée dans : ${b(inp.source)}. Chaque jour, ${b(fmt(inp.debit,0) + " m³")} sont envoyés vers la station de traitement. Cette eau a une turbidité de ${b(fmt(inp.turbidite,0) + " NTU")} et un pH de ${b(inp.ph)} : à ce stade, elle n'est pas potable.</p>`
+    },
+    {
+      icon: "2", titre: "Coagulation",
+      html: `<p>L'eau contient de nombreuses particules fines qui se repoussent naturellement et la rendent trouble. On ajoute donc un coagulant : ${b(r.coagulantNom)}.</p>
+             <p>${inp.ph < C.SEUIL_PH_FER
+                ? `Ce choix s'explique par le pH mesuré (${inp.ph}), inférieur à ${C.SEUIL_PH_FER} : le chlorure ferrique reste efficace en milieu plus acide.`
+                : `Ce choix s'explique par le pH mesuré (${inp.ph}), supérieur ou égal à ${C.SEUIL_PH_FER} : le sulfate d'aluminium, plus économique, y est pleinement efficace.`}</p>
+             <p>Avec une turbidité de ${b(fmt(inp.turbidite,0) + " NTU")}, la dose calculée est de ${b(fmt(r.doseCoagulant,1) + " mg/L")}, soit ${b(fmtKgL(r.coagulantKgL) + " kg par litre d'eau traitée")} — ce qui représente environ ${b(fmt(r.masseCoagulant,1) + " kg/j")} pour le débit renseigné.</p>`
+    },
+    {
+      icon: "3", titre: "Floculation",
+      html: `<p>Une agitation lente rapproche les particules déstabilisées, qui s'assemblent en flocons de plus en plus gros.</p>
+             <p>Comme la turbidité brute (${b(fmt(inp.turbidite,0) + " NTU")}) est ${inp.turbidite < C.SEUIL_TURBIDITE_FLOC ? "inférieure" : "supérieure ou égale"} à ${C.SEUIL_TURBIDITE_FLOC} NTU, le régime de floculation retenu est : ${b(r.floculationType)}.</p>
+             <p>Le gradient de vitesse calculé (G = ${b(fmt(r.G,1) + " s⁻¹")}) indique l'intensité de brassage à appliquer : plus G est élevé, plus l'agitation doit être vigoureuse. On ajoute en complément ${b(fmtKgL(r.floculantKgL) + " kg de floculant par litre d'eau traitée")} (environ 10 % de la dose de coagulant), soit ${b(fmt(r.masseFloculant,1) + " kg/j")} au total.</p>`
+    },
+    {
+      icon: "4", titre: "Décantation",
+      html: `<p>Les flocons formés, plus lourds que l'eau, se déposent au fond du bassin sous l'effet de la gravité.</p>
+             <p>Les matières en suspension (MES) mesurées sont de ${b(fmt(inp.mes,0) + " mg/L")}, ${inp.mes < C.SEUIL_MES_DECANT ? "en dessous" : "au-dessus"} du seuil de ${C.SEUIL_MES_DECANT} mg/L : le procédé retenu est donc ${b(r.decantationType)}.</p>`
+    },
+    {
+      icon: "5", titre: "Filtration",
+      html: `<p>L'eau clarifiée traverse ensuite des couches filtrantes (sable, gravier, parfois charbon actif) qui retiennent les dernières particules.</p>
+             <p>Avec une turbidité de ${b(fmt(inp.turbidite,0) + " NTU")}, le filtre retenu est : ${b(r.filtrationType)}.</p>`
+    },
+    {
+      icon: "6", titre: "Désinfection",
+      html: `<p>Même limpide, l'eau peut encore contenir des micro-organismes invisibles à l'œil nu.</p>
+             <p>Le nombre de coliformes détecté dans l'eau brute est de ${b(fmt(inp.coliformes,0) + " UFC/100 mL")}, ${inp.coliformes > 0
+                ? "ce qui impose un traitement chimique au chlore pour garantir leur élimination."
+                : "ce qui permet de privilégier les UV, complétés par une très faible dose de chlore résiduel pour protéger l'eau jusqu'au robinet."}</p>
+             <p>Désinfectant retenu : ${b(r.desinfectantNom)}, à raison de ${b(fmtKgL(r.desinfectantKgL) + " kg par litre d'eau traitée")}, soit environ ${b(fmt(r.masseDesinfectant,2) + " kg/j")} au total.</p>`
+    },
+    {
+      icon: "7", titre: "Stockage et distribution",
+      html: `<p>Après ce traitement complet, l'eau obtenue a une turbidité estimée à ${b(fmt(r.turbiditeFinale,2) + " NTU")} (seuil recommandé par l'OMS : &lt; ${C.SEUIL_OMS_TURBIDITE} NTU) et un pH ramené à ${b(r.phFinal)}.</p>
+             <p class="${r.conforme ? 'verdict-ok' : 'verdict-bad'}">${r.conforme
+                ? "Cette eau est jugée conforme aux normes de potabilité retenues et peut être stockée puis distribuée aux usagers."
+                : "Cette eau n'atteint pas encore les seuils de potabilité retenus : un ajustement des paramètres ou des doses est nécessaire."}</p>`
+    }
+  ];
+
+  const wrap = document.getElementById('accordion');
+  // conserve l'état ouvert/fermé existant si déjà rendu
+  const openStates = Array.from(wrap.querySelectorAll('.accordion-item')).map(el => el.classList.contains('open'));
+
+  wrap.innerHTML = items.map((it, i) => `
+    <div class="accordion-item ${ (openStates.length ? openStates[i] : i===0) ? 'open' : '' }">
+      <div class="accordion-head" data-idx="${i}">
+        <span>${it.icon}. ${it.titre}</span>
+        <span class="chev">›</span>
+      </div>
+      <div class="accordion-body">${it.html}</div>
+    </div>
+  `).join("");
+
+  wrap.querySelectorAll('.accordion-head').forEach(head => {
+    head.addEventListener('click', () => {
+      head.parentElement.classList.toggle('open');
+    });
+  });
+}
+
+function renderTable(inp, r) {
+  const rows = [
+    ["Captage", inp.source, fmt(inp.debit,0), "m³/j", "—", "—"],
+    ["Coagulation", r.coagulantNom, fmtKgL(r.coagulantKgL), "kg/L", fmt(r.masseCoagulant,2), "kg/j"],
+    ["Floculation", r.floculationType, fmtKgL(r.floculantKgL), "kg/L", fmt(r.masseFloculant,2), "kg/j"],
+    ["Décantation", r.decantationType, "—", "—", "—", "—"],
+    ["Filtration", r.filtrationType, "—", "—", "—", "—"],
+    ["Désinfection", r.desinfectantNom, fmtKgL(r.desinfectantKgL), "kg/L", fmt(r.masseDesinfectant,2), "kg/j"],
+    ["Distribution", "Eau potable", fmt(r.turbiditeFinale,2), "NTU", "—", "—"]
+  ];
+  const tbody = document.querySelector('#resultsTable tbody');
+  tbody.innerHTML = rows.map(row => `<tr>${row.map(c => `<td>${c}</td>`).join("")}</tr>`).join("");
+}
+
+function renderVerdict(r) {
+  const el = document.getElementById('verdictBox');
+  el.className = "verdict-box" + (r.conforme ? "" : " bad");
+  el.innerHTML = r.conforme
+    ? `<b style="color:var(--green);">Verdict : conforme — </b>L'eau obtenue respecte les critères de potabilité retenus (turbidité, pH, absence de coliformes).`
+    : `<b style="color:var(--red);">Verdict : non conforme — </b>L'eau obtenue ne respecte pas tous les critères de potabilité : revoyez les paramètres d'entrée ou les doses appliquées.`;
+}
+
+function renderQualite(inp, r) {
+  const svg = document.getElementById('qualiteChart');
+  const W = 760, H = 340, padL = 55, padR = 50, padT = 25, padB = 55;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+
+  const values = REDUCTION.map(([, f]) => inp.turbidite * f);
+  const maxY = Math.max(...values, C.SEUIL_OMS_TURBIDITE) * 1.15;
+
+  const xFor = i => padL + (i / (REDUCTION.length - 1)) * plotW;
+  const yFor = v => padT + plotH - (v / maxY) * plotH;
+
+  let html = `<rect x="0" y="0" width="${W}" height="${H}" fill="#FFFDF8" rx="6"/>`;
+
+  // axes
+  html += `<line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT+plotH}" stroke="#C9C2AC" stroke-width="1"/>`;
+  html += `<line x1="${padL}" y1="${padT+plotH}" x2="${padL+plotW}" y2="${padT+plotH}" stroke="#C9C2AC" stroke-width="1"/>`;
+
+  // seuil OMS
+  const ySeuil = yFor(C.SEUIL_OMS_TURBIDITE);
+  html += `<line x1="${padL}" y1="${ySeuil}" x2="${padL+plotW}" y2="${ySeuil}" stroke="#C97B2E" stroke-width="1.6" stroke-dasharray="5,4"/>`;
+  html += `<text x="${padL+6}" y="${ySeuil-6}" font-family="Helvetica" font-size="10.5" fill="#8A5A16">Seuil OMS : ${C.SEUIL_OMS_TURBIDITE} NTU</text>`;
+
+  // line path
+  let path = "";
+  values.forEach((v, i) => { path += (i === 0 ? "M" : "L") + xFor(i) + "," + yFor(v) + " "; });
+  html += `<path d="${path}" fill="none" stroke="#12606D" stroke-width="2.6"/>`;
+
+  values.forEach((v, i) => {
+    html += `<circle cx="${xFor(i)}" cy="${yFor(v)}" r="5" fill="#0B3D45"/>`;
+    html += `<text x="${xFor(i)}" y="${padT+plotH+18}" text-anchor="middle" font-family="Helvetica" font-size="9.5" fill="#24393B">${REDUCTION[i][0]}</text>`;
+    html += `<text x="${xFor(i)}" y="${yFor(v)-10}" text-anchor="middle" font-family="Helvetica" font-size="9.5" fill="#0B3D45">${fmt(v,1)}</text>`;
+  });
+
+  html += `<text x="${-(padT+plotH/2)}" y="16" transform="rotate(-90)" text-anchor="middle" font-family="Helvetica" font-size="10.5" fill="#24393B">Turbidité (NTU)</text>`;
+
+  svg.innerHTML = html;
+
+  document.getElementById('qualiteCaption').innerHTML =
+    `Ce graphique suit la turbidité de l'eau à chaque étape du traitement, en partant de ${b(fmt(inp.turbidite,0) + " NTU")} à l'entrée. ` +
+    `Elle diminue progressivement pour atteindre ${b(fmt(r.turbiditeFinale,2) + " NTU")} en sortie de désinfection — ` +
+    (r.conforme
+      ? "sous le seuil recommandé par l'OMS (ligne en pointillés)."
+      : "ce qui reste au-dessus du seuil recommandé par l'OMS (ligne en pointillés) : un traitement complémentaire serait nécessaire.");
+}
+
+function renderGlossaire() {
+  const termes = [
+    ["Turbidité (NTU)", "Mesure la clarté de l'eau. Une eau trouble contient beaucoup de particules en suspension."],
+    ["MES (mg/L)", "Matières En Suspension : particules solides non dissoutes, visibles ou non, flottant dans l'eau."],
+    ["Couleur (Pt-Co)", "Intensité de la teinte de l'eau, souvent due à la matière organique dissoute (feuilles, tourbe...)."],
+    ["Conductivité (µS/cm)", "Reflète la quantité de sels minéraux dissous : plus elle est élevée, plus l'eau est minéralisée."],
+    ["pH", "Mesure l'acidité de l'eau, de 0 (très acide) à 14 (très basique). 7 correspond à la neutralité."],
+    ["Coagulant", "Produit chimique qui neutralise la répulsion naturelle entre particules fines, les rendant collantes."],
+    ["Floculant", "Produit qui favorise le regroupement des particules déstabilisées en flocons plus gros."],
+    ["Gradient de vitesse (G)", "Indicateur de l'intensité du brassage appliqué à l'eau pendant la floculation."],
+    ["Coliformes (UFC/100 mL)", "Bactéries indicatrices d'une contamination fécale ; leur absence est exigée avant distribution."],
+    ["NTU", "Nephelometric Turbidity Unit : unité de mesure de la turbidité de l'eau."]
+  ];
+  document.getElementById('glossaire').innerHTML = termes.map(t => `<dt>${t[0]}</dt><dd>${t[1]}</dd>`).join("");
+}
+
+// =============================================================================
+// EXPORT CSV
+// =============================================================================
+function exportCSV() {
+  if (!lastResults) return;
+  const { inp, r } = lastResults;
+  const rows = [
+    ["Etape","Information","Dose_kg_par_L","Unite1","Masse_totale_kg_par_j","Unite2"],
+    ["Captage", inp.source, "", "", inp.debit, "m3/j"],
+    ["Coagulation", r.coagulantNom, r.coagulantKgL.toFixed(8), "kg/L", r.masseCoagulant.toFixed(2), "kg/j"],
+    ["Floculation", r.floculationType, r.floculantKgL.toFixed(8), "kg/L", r.masseFloculant.toFixed(2), "kg/j"],
+    ["Decantation", r.decantationType, "", "-", "", "-"],
+    ["Filtration", r.filtrationType, "", "-", "", "-"],
+    ["Desinfection", r.desinfectantNom, r.desinfectantKgL.toFixed(8), "kg/L", r.masseDesinfectant.toFixed(2), "kg/j"],
+    ["Distribution", "Eau potable", r.turbiditeFinale.toFixed(2), "NTU", "", ""]
+  ];
+  const csv = rows.map(row => row.map(v => `"${String(v).replace(/"/g,'""')}"`).join(",")).join("\r\n");
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `resultats_traitement_eau_${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// =============================================================================
+// ÉVÉNEMENTS
+// =============================================================================
+document.querySelectorAll('.sidebar input, .sidebar select').forEach(el => {
+  el.addEventListener('input', render);
+  el.addEventListener('change', render);
+});
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+document.getElementById('btnReset').addEventListener('click', () => {
+  document.getElementById('source').value = DEFAULTS.source;
+  document.getElementById('debit').value = DEFAULTS.debit;
+  document.getElementById('temperature').value = DEFAULTS.temperature;
+  document.getElementById('ph').value = DEFAULTS.ph;
+  document.getElementById('turbidite').value = DEFAULTS.turbidite;
+  document.getElementById('mes').value = DEFAULTS.mes;
+  document.getElementById('couleur').value = DEFAULTS.couleur;
+  document.getElementById('conductivite').value = DEFAULTS.conductivite;
+  document.getElementById('fer').value = DEFAULTS.fer;
+  document.getElementById('manganese').value = DEFAULTS.manganese;
+  document.getElementById('nitrates').value = DEFAULTS.nitrates;
+  document.getElementById('coliformes').value = DEFAULTS.coliformes;
+  render();
+});
+
+document.getElementById('btnExport').addEventListener('click', exportCSV);
+
+// Rendu initial
+renderFlow();
+renderFlowDroplets();
+render();
+</script>
+</body>
+</html>
